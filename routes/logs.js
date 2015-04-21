@@ -121,7 +121,7 @@ exports.register = function(server, options, next) {
             }
 
             var log = {};
-            //go to users collection and find the user_id (to be used later)
+            //go to users collection and find the user_id
             db.collection('users').findOne( {"_id": ObjectId(session.user_id)}, function(err, result){
               if (err) {
                 return reply('Internal MongDB Error', err);
@@ -204,7 +204,7 @@ exports.register = function(server, options, next) {
             }
 
             var log = {};
-
+            //see if log exists
             db.collection('logs').findOne( {"_id": ObjectId(id)}, function(err, result){
               if (err) {
                 return reply('Internal MongDB Error', err);
@@ -213,13 +213,16 @@ exports.register = function(server, options, next) {
                 return reply("Log Does Not Exist");
               }
               if (result) {
+                //see if there's a match in sessions
                 db.collection('sessions').findOne( {"user_id": result.user_id}, function(err, session) {
                   if (err) {
                     return reply('Internal MongDB Error', err);
                   }
+                  // if there's no match, not authorized to view
                   if (session === null) {
                     return reply({"authorized": false});
                   }
+                  // if there's a match, edit the log
                   if (session) {
                     log = {
                       "user_id" : ObjectId(session.user_id),
