@@ -187,7 +187,8 @@ exports.register = function(server, options, next) {
         }
       }
     },
-{ //PUT REQUEST || UPDATE A SPECIFIC LOG (REQ. AUTH)
+
+    { //PUT REQUEST || UPDATE A SPECIFIC LOG (REQ. AUTH)
       method: 'PUT',
       path: '/logs/{id}',
       config: {
@@ -212,34 +213,44 @@ exports.register = function(server, options, next) {
                 return reply("Log Does Not Exist");
               }
               if (result) {
-                log = {
-                  "user_id" : ObjectId(session.user_id),
-                  "username": result.username,
-                  "diveNum" : request.payload.log.diveNum,
-                  "date" : request.payload.log.date,
-                  "location" : request.payload.log.location,
-                  "surfaceInt" : request.payload.log.surfaceInt,
-                  "startingPG" : request.payload.log.startingPG,
-                  "depth" : request.payload.log.depth,
-                  "bottomTime" : request.payload.log.bottomTime,
-                  "safetyStop" : request.payload.log.safetyStop,
-                  "endingPG" : request.payload.log.endingPG,
-                  "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
-                  "cumulativeTime" : request.payload.log.cumulativeTime,
-                  "visibility" : request.payload.log.visibility,
-                  "buddyName" : request.payload.log.buddyName,
-                  "buddyTitle" : request.payload.log.buddyTitle,
-                  "buddyCert" : request.payload.log.buddyCert,
-                  "diveCenter" : request.payload.log.diveCenter,
-                  "description" : request.payload.log.description,
-                  "keywords" : request.payload.log.keywords,
-                }
-                
-                db.collection('logs').update({ "_id" : result._id }, log, function(err, writeResult) {
+                db.collection('sessions').findOne( {"user_id": result.user_id}, function(err, session) {
                   if (err) {
-                    return reply('Internal MongoDB Error', err);
+                    return reply('Internal MongDB Error', err);
                   }
-                  reply(writeResult);
+                  if (session === null) {
+                    return reply({"authorized": false});
+                  }
+                  if (session) {
+                    log = {
+                      "user_id" : ObjectId(session.user_id),
+                      "username": result.username,
+                      "diveNum" : request.payload.log.diveNum,
+                      "date" : request.payload.log.date,
+                      "location" : request.payload.log.location,
+                      "surfaceInt" : request.payload.log.surfaceInt,
+                      "startingPG" : request.payload.log.startingPG,
+                      "depth" : request.payload.log.depth,
+                      "bottomTime" : request.payload.log.bottomTime,
+                      "safetyStop" : request.payload.log.safetyStop,
+                      "endingPG" : request.payload.log.endingPG,
+                      "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
+                      "cumulativeTime" : request.payload.log.cumulativeTime,
+                      "visibility" : request.payload.log.visibility,
+                      "buddyName" : request.payload.log.buddyName,
+                      "buddyTitle" : request.payload.log.buddyTitle,
+                      "buddyCert" : request.payload.log.buddyCert,
+                      "diveCenter" : request.payload.log.diveCenter,
+                      "description" : request.payload.log.description,
+                      "keywords" : request.payload.log.keywords,
+                    }
+                    
+                    db.collection('logs').update({ "_id" : result._id }, log, function(err, writeResult) {
+                      if (err) {
+                        return reply('Internal MongoDB Error', err);
+                      }
+                      reply(writeResult);
+                    })          
+                  }
                 })
               }
             })
@@ -271,7 +282,6 @@ exports.register = function(server, options, next) {
         }
       }
     },
-
 
     { //DELETE REQUEST || DELETE A SPECIFIC LOG (REQ. AUTH)
       method: 'DELETE',
