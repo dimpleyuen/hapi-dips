@@ -43,7 +43,7 @@ exports.register = function(server, options, next) {
 
                 //store new session info into the browser cookie via yar
                 request.session.set('dips_session', newSession);
-                reply(writeResult);
+                reply({"status": true});
               });
 
             //if password is incorrect
@@ -80,7 +80,7 @@ exports.register = function(server, options, next) {
           if (err) {
             return reply('Internal MongoDB Error', err);
           }
-          return reply(writeResult);
+          return reply({"status": true});
         })
       }
     }

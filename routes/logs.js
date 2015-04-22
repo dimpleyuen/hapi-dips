@@ -81,7 +81,7 @@ exports.register = function(server, options, next) {
                 log = {
                   "user_id" : ObjectId(user._id),
                   "username": user.username,
-                  "date" : request.payload.log.date,
+                  "date" : new Date(request.payload.log.date),
                   "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
                   "startingPG" : request.payload.log.startingPG,
@@ -98,6 +98,7 @@ exports.register = function(server, options, next) {
                   "diveCenter" : request.payload.log.diveCenter,
                   "description" : request.payload.log.description,
                   "keywords" : request.payload.log.keywords,
+                  "image" : request.payload.log.image
                 }
                 
                 db.collection('logs').insert(log, function(err, writeResult) {
@@ -113,7 +114,7 @@ exports.register = function(server, options, next) {
         validate: {
           payload: {
             log: {
-              date: Joi.date().format('YY/MM/DD').required(),
+              date: Joi.string().required(),
               location: Joi.string().required(),
               surfaceInt: Joi.string(),
               startingPG: Joi.string(),
@@ -129,7 +130,8 @@ exports.register = function(server, options, next) {
               buddyCert: Joi.string(),
               diveCenter: Joi.string(),
               description: Joi.string().max(750),
-              keywords: Joi.string()
+              keywords: Joi.string(),
+              image: Joi.string()
             }
           }
         }
@@ -163,7 +165,7 @@ exports.register = function(server, options, next) {
                 log = {
                   "user_id" : ObjectId(result.user_id),
                   "username": logResult.username,
-                  "date" : request.payload.log.date,
+                  "date" : new Date(request.payload.log.date),
                   "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
                   "startingPG" : request.payload.log.startingPG,
@@ -180,6 +182,7 @@ exports.register = function(server, options, next) {
                   "diveCenter" : request.payload.log.diveCenter,
                   "description" : request.payload.log.description,
                   "keywords" : request.payload.log.keywords,
+                  "image" : request.payload.log.image
                 }
 
                 db.collection('logs').update(logResult, log, function(err, writeResult) {
@@ -195,7 +198,7 @@ exports.register = function(server, options, next) {
         validate: {
           payload: {
             log: {
-              date: Joi.date().format('YY/MM/DD').required(),
+              date: Joi.string().required(),
               location: Joi.string().required(),
               surfaceInt: Joi.string(),
               startingPG: Joi.string(),
@@ -211,7 +214,8 @@ exports.register = function(server, options, next) {
               buddyCert: Joi.string(),
               diveCenter: Joi.string(),
               description: Joi.string().max(750),
-              keywords: Joi.string()
+              keywords: Joi.string(),
+              image: Joi.string()
             }
           }
         }
