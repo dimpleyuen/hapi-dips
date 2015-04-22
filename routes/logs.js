@@ -29,58 +29,30 @@ exports.register = function(server, options, next) {
 
     { //GET REQUEST || (BY LOCATION) GET LOGS BY ONE USER (REQ. AUTH)
       // request -> "http://locahost:3000/logs?username=harry&searchQuery=hongkong"
-      method: 'GET',
-      path: '/users/{username}/logs/{searchQuery}',
       // path: '/logs',
+      method: 'GET',
+      path: '/logs/{searchQuery}',
       handler: function(request, reply) {
         var db = request.server.plugins['hapi-mongodb'].db;
         var username = encodeURIComponent(request.params.username);
+        var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
         var searchQuery = encodeURIComponent(request.params.searchQuery);
 
-        // db.collection('logs').createIndex( { location: "text" } );
-        db.collection('logs').createIndex( {
-          location: 'text',
-          date: 'text',
-          keywords: 'text',
-        });
-
-        // var query = { $or: [{location: searchQuery}, {date: searchQuery}] };
-        var query = { $text: { $search: searchQuery } };
+        db.collection('logs').createIndex( { location: "text" } ); //only do location now:: to-do --> by year and keywords
+        var query = {$text: { $search: searchQuery } };
 
         Auth.authenticated(request, function(result) {
           if (result.authenticated === false) {
             return reply('Please Login First');
           }
-          //see if the user exists
-          db.collection('users').findOne({"username": username}, function(err, user) {
-            if (err) {
-              return reply('Internal MongoDB Error', err);
-            }
-            if (user === null) {
-              return reply('User Does Not Exist');
-            }
-            if (user) {
-              //see if there's a match in sessions
-              db.collection('sessions').findOne( {"user_id" : user._id}, function(err, result) {
-                if (err) {
-                  return reply('Internal MongoDB Error', err);
-                }
-                //if there's no match, not authorized to view
-                if (result === null) {
-                  return reply({'authorized' : false})
-                }
-                //if there's a match, list all the logs by location
-                if (result) {
-                  db.collection('logs').find(query).toArray(function(err, logs) {
-                    if (err) {
-                      return reply('Internal MongoDB error', err);
-                    }
-                    reply(logs);
-                  })
-                }
-              })
-            }
-          })
+          if (result.authenticated) {
+            db.collection('logs').find({ $and: [ {"user_id" : ObjectId(result.user_id)}, query ] }).toArray(function(err, logs) {
+              if (err) {
+                return reply("Internal MongoDB Error", err);
+              }
+              return reply(logs);
+            })
+          }
         })
       }
     },
@@ -91,7 +63,6 @@ exports.register = function(server, options, next) {
       config: {
         handler: function(request, reply) {
           var db = request.server.plugins['hapi-mongodb'].db;
-          var session = request.session.get("dips_session");
           var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
 
           Auth.authenticated(request, function(result) {
@@ -101,16 +72,15 @@ exports.register = function(server, options, next) {
 
             var log = {};
             //go to users collection and find the user_id
-            db.collection('users').findOne( {"_id": ObjectId(session.user_id)}, function(err, result){
+            db.collection('users').findOne( {"_id": ObjectId(result.user_id)}, function(err, user){
               if (err) {
                 return reply('Internal MongDB Error', err);
               }
               // create a new log
-              if (result) {
+              if (user) {
                 log = {
-                  "user_id" : ObjectId(session.user_id),
-                  "username": result.username,
-                  "diveNum" : request.payload.log.diveNum,
+                  "user_id" : ObjectId(user._id),
+                  "username": user.username,
                   "date" : request.payload.log.date,
                   "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
@@ -143,8 +113,7 @@ exports.register = function(server, options, next) {
         validate: {
           payload: {
             log: {
-              diveNum: Joi.string().required(),
-              date: Joi.string().required(),
+              date: Joi.date().format('YY/MM/DD').required(),
               location: Joi.string().required(),
               surfaceInt: Joi.string(),
               startingPG: Joi.string(),
@@ -155,8 +124,8 @@ exports.register = function(server, options, next) {
               bottomTimeToDate: Joi.string().required(),
               cumulativeTime: Joi.string().required(),
               visibility: Joi.string(),
-              buddyName: Joi.string().required(),
-              buddyTitle: Joi.string().required(),
+              buddyName: Joi.string(),
+              buddyTitle: Joi.string(),
               buddyCert: Joi.string(),
               diveCenter: Joi.string(),
               description: Joi.string().max(750),
@@ -173,7 +142,6 @@ exports.register = function(server, options, next) {
       config: {
         handler: function(request, reply) {
           var db = request.server.plugins['hapi-mongodb'].db;
-          var session = request.session.get("dips_session");
           var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
           var id = encodeURIComponent(request.params.id);
 
@@ -193,9 +161,8 @@ exports.register = function(server, options, next) {
               }
               if (logResult) {
                 log = {
-                  "user_id" : ObjectId(session.user_id),
-                  "username": result.username,
-                  "diveNum" : request.payload.log.diveNum,
+                  "user_id" : ObjectId(result.user_id),
+                  "username": logResult.username,
                   "date" : request.payload.log.date,
                   "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
@@ -228,8 +195,7 @@ exports.register = function(server, options, next) {
         validate: {
           payload: {
             log: {
-              diveNum: Joi.string().required(),
-              date: Joi.string().required(),
+              date: Joi.date().format('YY/MM/DD').required(),
               location: Joi.string().required(),
               surfaceInt: Joi.string(),
               startingPG: Joi.string(),
@@ -240,8 +206,8 @@ exports.register = function(server, options, next) {
               bottomTimeToDate: Joi.string().required(),
               cumulativeTime: Joi.string().required(),
               visibility: Joi.string(),
-              buddyName: Joi.string().required(),
-              buddyTitle: Joi.string().required(),
+              buddyName: Joi.string(),
+              buddyTitle: Joi.string(),
               buddyCert: Joi.string(),
               diveCenter: Joi.string(),
               description: Joi.string().max(750),
@@ -257,7 +223,6 @@ exports.register = function(server, options, next) {
       path: '/logs/{id}',
       handler: function (request, reply) {
         var db = request.server.plugins['hapi-mongodb'].db;
-        var session = request.session.get("hapi_twitter_session");
         var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
         var id = encodeURIComponent(request.params.id);
 
