@@ -6,53 +6,32 @@ exports.register = function(server, options, next) {
   server.route([
     { // GET REQUEST || GET LOGS BY ONE USER (REQ. AUTH)
       method: 'GET',
-      path: '/users/{username}/logs',
+      path: '/logs',
       handler: function(request, reply) {
         var db = request.server.plugins['hapi-mongodb'].db;
-        var username = encodeURIComponent(request.params.username);
+        var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
 
         Auth.authenticated(request, function(result) {
           if (result.authenticated === false) {
             return reply('Please Login First');
           }
-
-          //see if user exists in the collection
-          db.collection('users').findOne({"username": username}, function(err, user) {
-            if (err) {
-              return reply('Internal MongoDB Error', err);
-            }
-            if (user === null) {
-              return reply('User Does Not Exist');
-            }
-            if (user) {
-              //see if there's a match in sessions
-              db.collection('sessions').findOne( {"user_id" : user._id}, function(err, result) {
-                if (err) {
-                  return reply('Internal MongoDB Error', err);
-                }
-                //if there's no match, not authorized to view
-                if (result === null) {
-                  return reply({'authorized' : false})
-                }
-                //if there's a match, list all the logs
-                if (result) {
-                  db.collection('logs').find( {username: username} ).toArray(function(err, logs) {
-                    if (err) {
-                      return reply('Internal MongoDB error', err);
-                    }
-                    reply(logs);
-                  })
-                }
-              })
-            }
-          })
+          if (result.authenticated) {
+            db.collection('logs').find( {"user_id" : ObjectId(result.user_id)} ).toArray(function(err, logs) {
+              if (err) {
+                return reply('Internal MongoDB Error', err);
+              }
+              reply(logs);
+            })
+          }
         })
       }
     },
 
     { //GET REQUEST || (BY LOCATION) GET LOGS BY ONE USER (REQ. AUTH)
+      // request -> "http://locahost:3000/logs?username=harry&searchQuery=hongkong"
       method: 'GET',
       path: '/users/{username}/logs/{searchQuery}',
+      // path: '/logs',
       handler: function(request, reply) {
         var db = request.server.plugins['hapi-mongodb'].db;
         var username = encodeURIComponent(request.params.username);
@@ -205,56 +184,43 @@ exports.register = function(server, options, next) {
 
             var log = {};
             //see if log exists
-            db.collection('logs').findOne( {"_id": ObjectId(id)}, function(err, result){
+            db.collection('logs').findOne( {"_id": ObjectId(id), "user_id": ObjectId(result.user_id)}, function(err, logResult){
               if (err) {
                 return reply('Internal MongDB Error', err);
               }
-              if (result === null) {
-                return reply("Log Does Not Exist");
+              if (logResult === null) {
+                return reply("Log Does Not Exist/Not Authorized To Delete");
               }
-              if (result) {
-                //see if there's a match in sessions
-                db.collection('sessions').findOne( {"user_id": result.user_id}, function(err, session) {
+              if (logResult) {
+                log = {
+                  "user_id" : ObjectId(session.user_id),
+                  "username": result.username,
+                  "diveNum" : request.payload.log.diveNum,
+                  "date" : request.payload.log.date,
+                  "location" : request.payload.log.location,
+                  "surfaceInt" : request.payload.log.surfaceInt,
+                  "startingPG" : request.payload.log.startingPG,
+                  "depth" : request.payload.log.depth,
+                  "bottomTime" : request.payload.log.bottomTime,
+                  "safetyStop" : request.payload.log.safetyStop,
+                  "endingPG" : request.payload.log.endingPG,
+                  "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
+                  "cumulativeTime" : request.payload.log.cumulativeTime,
+                  "visibility" : request.payload.log.visibility,
+                  "buddyName" : request.payload.log.buddyName,
+                  "buddyTitle" : request.payload.log.buddyTitle,
+                  "buddyCert" : request.payload.log.buddyCert,
+                  "diveCenter" : request.payload.log.diveCenter,
+                  "description" : request.payload.log.description,
+                  "keywords" : request.payload.log.keywords,
+                }
+
+                db.collection('logs').update(logResult, log, function(err, writeResult) {
                   if (err) {
-                    return reply('Internal MongDB Error', err);
+                    return reply('Internal MongoDB Error', err);
                   }
-                  // if there's no match, not authorized to view
-                  if (session === null) {
-                    return reply({"authorized": false});
-                  }
-                  // if there's a match, edit the log
-                  if (session) {
-                    log = {
-                      "user_id" : ObjectId(session.user_id),
-                      "username": result.username,
-                      "diveNum" : request.payload.log.diveNum,
-                      "date" : request.payload.log.date,
-                      "location" : request.payload.log.location,
-                      "surfaceInt" : request.payload.log.surfaceInt,
-                      "startingPG" : request.payload.log.startingPG,
-                      "depth" : request.payload.log.depth,
-                      "bottomTime" : request.payload.log.bottomTime,
-                      "safetyStop" : request.payload.log.safetyStop,
-                      "endingPG" : request.payload.log.endingPG,
-                      "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
-                      "cumulativeTime" : request.payload.log.cumulativeTime,
-                      "visibility" : request.payload.log.visibility,
-                      "buddyName" : request.payload.log.buddyName,
-                      "buddyTitle" : request.payload.log.buddyTitle,
-                      "buddyCert" : request.payload.log.buddyCert,
-                      "diveCenter" : request.payload.log.diveCenter,
-                      "description" : request.payload.log.description,
-                      "keywords" : request.payload.log.keywords,
-                    }
-                    
-                    db.collection('logs').update({ "_id" : result._id }, log, function(err, writeResult) {
-                      if (err) {
-                        return reply('Internal MongoDB Error', err);
-                      }
-                      reply(writeResult);
-                    })          
-                  }
-                })
+                  reply(writeResult);
+                })         
               }
             })
           })
@@ -299,36 +265,19 @@ exports.register = function(server, options, next) {
           if (result.authenticated === false) {
             return reply('Please Login First');
           }
-          //see if log exists
-          db.collection('logs').findOne({"_id": ObjectId(id)}, function(err, log) {
-            if (err) {
-              return reply('Internal MongoDB Error', err);
-            }
-            if (log === null) {
-              return reply('Log Does Not Exist');
-            }
-            if (log) {
-              //see if person is authorized
-              db.collection('sessions').findOne( {"user_id" : ObjectId(log.user_id)}, function(err, result) {
-                if (err) {
-                  return reply('Internal MongoDB Error', err);
-                }
-                //if there's no match, not authorized
-                if (result === null) {
-                  return reply({'authorized' : false})
-                }
-                //if there's a match, delete it
-                if (result) {
-                  db.collection('logs').remove({"_id": ObjectId(id)}, function(err, writeResult) {
-                    if (err) {
-                      return reply('Internal MongoDB Error', err);
-                    }
-                    reply(writeResult);
-                  })
-                }
-              })
-            }
-          })
+          if (result.authenticated) {
+            db.collection('logs').findOne( {"_id" : ObjectId(id), "user_id" : ObjectId(result.user_id)}, function(err, log) {
+              if (err) {
+                return reply('Internal MongoDB Error', err);
+              }
+              if (log === null) {
+                return reply('Not Authorized');
+              }
+              db.collection('logs').remove(log, function(err, result) {
+                return reply(result);
+              });
+            })
+          }
         })
       }
     }

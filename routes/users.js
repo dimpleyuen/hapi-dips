@@ -4,21 +4,6 @@ var Joi = require('joi');
 exports.register = function(server, options, next) {
 
   server.route([
-    { //GET REQUEST || GET ALL USERS
-      method: 'GET',
-      path: '/users',
-      handler: function(request, reply) {
-        var db = request.server.plugins['hapi-mongodb'].db;
-
-        db.collection('users').find().toArray(function(err, users) {
-          if (err) {
-            return reply('Internal MongoDB Error', err);
-          }
-          reply(users);
-        });
-      }
-    },
-
     { //POST REQUEST || CREATE NEW USER
       method: 'POST',
       path: '/users',
