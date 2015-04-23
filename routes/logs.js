@@ -143,22 +143,22 @@ exports.register = function(server, options, next) {
             log: {
               date: Joi.string().required(),
               location: Joi.string().required(),
-              surfaceInt: Joi.string(),
-              startingPG: Joi.string(),
-              depth: Joi.string(),
+              surfaceInt: Joi.string().allow(''),
+              startingPG: Joi.string().allow(''),
+              depth: Joi.string().allow(''),
               bottomTime: Joi.string().required(),
-              safetyStop: Joi.string(),
-              endingPG: Joi.string(),
+              safetyStop: Joi.string().allow(''),
+              endingPG: Joi.string().allow(''),
               bottomTimeToDate: Joi.string().required(),
               cumulativeTime: Joi.string().required(),
-              visibility: Joi.string(),
-              buddyName: Joi.string(),
-              buddyTitle: Joi.string(),
-              buddyCert: Joi.string(),
-              diveCenter: Joi.string(),
+              visibility: Joi.string().allow(''),
+              buddyName: Joi.string().allow(''),
+              buddyTitle: Joi.string().allow(''),
+              buddyCert: Joi.string().allow(''),
+              diveCenter: Joi.string().allow(''),
               description: Joi.string().max(750),
-              keywords: Joi.string(),
-              image: Joi.string()
+              keywords: Joi.string().allow(''),
+              image: Joi.string().allow('')
             }
           }
         }
