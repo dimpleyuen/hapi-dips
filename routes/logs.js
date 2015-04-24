@@ -183,22 +183,24 @@ exports.register = function(server, options, next) {
                return reply('Please Login First');
             }
 
+            var log = {};
             //see if log exists
-            db.collection('logs').findOne( {"_id": ObjectId(id) }, function(err, logResult){
-              if (err) {return reply('Internal MongDB Error', err); }
-              
+            db.collection('logs').findOne( {"_id": ObjectId(id), function(err, logResult){
+              if (err) {
+                return reply('Internal MongDB Error', err);
+              }
               if (logResult === null) {
                 return reply("Log Does Not Exist/Not Authorized To Delete");
-              } else {
-                var log = {
+              }
+              if (logResult) {
+                log = {
                   "date" : new Date(request.payload.log.date),
-                  "location" :   request.payload.log.location,
+                  "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
                   "startingPG" : request.payload.log.startingPG,
-                  "depth" :      request.payload.log.depth,
+                  "depth" : request.payload.log.depth,
                   "bottomTime" : request.payload.log.bottomTime,
-                  // "safetyStop" : request.payload.log.safetyStop,
-                  "endingPG" :   request.payload.log.endingPG,
+                  "endingPG" : request.payload.log.endingPG,
                   "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
                   "cumulativeTime" : request.payload.log.cumulativeTime,
                   "visibility" : request.payload.log.visibility,
@@ -210,19 +212,15 @@ exports.register = function(server, options, next) {
                   "keywords" : request.payload.log.keywords,
                   "image" : request.payload.log.image
                 }
-                
-                console.log('------------------------------');
-                console.log(log);
-                db.collection('logs').update({_id: ObjectId(logResult._id)}, {$set: log}, {}, function(err, writeResult) {
+
+                db.collection('logs').update({_id: ObjectId(logResult._id)}, {$set: log}, function(err, writeResult) {
                   if (err) {
                     return reply('Internal MongoDB Error', err);
                   }
-                  console.log('------------------------------');
-                  console.log(writeResult);
-                  return(writeResult);
+                  reply(writeResult);
                 })         
               }
-            }); 
+            })
           })
         },
         validate: {
