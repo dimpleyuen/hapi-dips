@@ -16,7 +16,7 @@ exports.register = function(server, options, next) {
             return reply('Please Login First');
           }
           if (result.authenticated) {
-            db.collection('logs').find( {"user_id" : ObjectId(result.user_id)} ).toArray(function(err, logs) {
+            db.collection('logs').find( {"user_id" : ObjectId(result.user_id)} ).sort( {"date" : 1} ).toArray(function(err, logs) {
               if (err) {
                 return reply('Internal MongoDB Error', err);
               }
@@ -38,7 +38,8 @@ exports.register = function(server, options, next) {
         var ObjectId = request.server.plugins['hapi-mongodb'].ObjectID;
         var searchQuery = encodeURIComponent(request.params.searchQuery);
 
-        db.collection('logs').createIndex( { location: "text" } ); //only do location now:: to-do --> by year and keywords
+        db.collection('logs').createIndex( { location: "text" } );
+        db.collection('logs').createIndex( { keywords: "text" } );
         var query = {$text: { $search: searchQuery } };
 
         Auth.authenticated(request, function(result) {
@@ -105,16 +106,18 @@ exports.register = function(server, options, next) {
               }
               // create a new log
               if (user) {
+                // var diveNum = db.collection('logs').count({"user_id" : ObjectId(result.user_id)});
+                
                 log = {
                   "user_id" : ObjectId(user._id),
                   "username": user.username,
+                  // "diveNum" : (diveNum+1),
                   "date" : new Date(request.payload.log.date),
                   "location" : request.payload.log.location,
                   "surfaceInt" : request.payload.log.surfaceInt,
                   "startingPG" : request.payload.log.startingPG,
                   "depth" : request.payload.log.depth,
                   "bottomTime" : request.payload.log.bottomTime,
-                  // "safetyStop" : request.payload.log.safetyStop,
                   "endingPG" : request.payload.log.endingPG,
                   "bottomTimeToDate" : request.payload.log.bottomTimeToDate,
                   "cumulativeTime" : request.payload.log.cumulativeTime,
@@ -142,6 +145,7 @@ exports.register = function(server, options, next) {
           payload: {
             log: {
               date: Joi.string().required(),
+              // diveNum: Joi.number().required(),
               location: Joi.string().required(),
               surfaceInt: Joi.string().allow(''),
               startingPG: Joi.string().allow(''),
@@ -156,7 +160,7 @@ exports.register = function(server, options, next) {
               buddyTitle: Joi.string().allow(''),
               buddyCert: Joi.string().allow(''),
               diveCenter: Joi.string().allow(''),
-              description: Joi.string().max(750),
+              description: Joi.string().max(1000).allow(''),
               keywords: Joi.string().allow(''),
               image: Joi.string().allow('')
             }
@@ -180,6 +184,8 @@ exports.register = function(server, options, next) {
             }
 
             var log = {};
+            var count = db.collection('logs').count({"user_id": ObjectId(result.user_id)});
+
             //see if log exists
             db.collection('logs').findOne( {"_id": ObjectId(id), "user_id": ObjectId(result.user_id)}, function(err, logResult){
               if (err) {
